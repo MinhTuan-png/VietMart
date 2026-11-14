@@ -1,0 +1,253 @@
+// Prisma schema - VietMart
+// PostgreSQL (Neon / Supabase / Postgres cài trên máy). Chuỗi kết nối đặt trong DATABASE_URL (.env).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int       @id @default(autoincrement())
+  email     String    @unique
+  password  String
+  name      String
+  phone     String?
+  avatar    String?
+  role      String    @default("CUSTOMER") // CUSTOMER | STAFF | ADMIN
+  isLocked  Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  addresses Address[]
+  orders    Order[]
+  cartItems CartItem[]
+  reviews   Review[]
+  wishlist  Wishlist[]
+  views     ProductView[]
+  auditLogs AuditLog[]
+}
+
+model Address {
+  id        Int     @id @default(autoincrement())
+  userId    Int
+  fullName  String
+  phone     String
+  province  String
+  district  String
+  ward      String
+  street    String
+  isDefault Boolean @default(false)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Category {
+  id        Int        @id @default(autoincrement())
+  name      String
+  slug      String     @unique
+  icon      String?
+  image     String?
+  sortOrder Int        @default(0)
+  parentId  Int?
+  parent    Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children  Category[] @relation("CategoryTree")
+  products  Product[]
+}
+
+model Brand {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  slug     String    @unique
+  products Product[]
+}
+
+model Product {
+  id                Int      @id @default(autoincrement())
+  name              String
+  slug              String   @unique
+  sku               String   @unique
+  shortDesc         String?
+  description       String
+  price             Int // giá bán (VND)
+  comparePrice      Int? // giá gốc trước giảm
+  costPrice         Int? // giá vốn (để tính lợi nhuận)
+  stock             Int      @default(0)
+  lowStockThreshold Int      @default(10)
+  sold              Int      @default(0)
+  views             Int      @default(0)
+  rating            Float    @default(0)
+  ratingCount       Int      @default(0)
+  thumbnail         String
+  images            String   @default("[]") // JSON array
+  specs             String   @default("{}") // JSON object
+  tags              String   @default("") // phân tách bởi dấu phẩy
+  weight            Int? // gram
+  warranty          String?
+  isActive          Boolean  @default(true)
+  isFeatured        Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  categoryId Int
+  category   Category @relation(fields: [categoryId], references: [id])
+  brandId    Int?
+  brand      Brand?   @relation(fields: [brandId], references: [id])
+
+  reviews       Review[]
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+  wishlist      Wishlist[]
+  inventoryLogs InventoryLog[]
+  viewsLog      ProductView[]
+
+  @@index([categoryId])
+  @@index([brandId])
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  productId Int
+  orderId   Int?
+  rating    Int
+  comment   String
+  isHidden  Boolean  @default(false)
+  reply     String? // phản hồi của shop
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+}
+
+model Wishlist {
+  userId    Int
+  productId Int
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([userId, productId])
+}
+
+model CartItem {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  productId Int
+  quantity  Int      @default(1)
+  selected  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+}
+
+model ProductView {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  productId Int
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Coupon {
+  id          Int       @id @default(autoincrement())
+  code        String    @unique
+  description String
+  type        String // PERCENT | FIXED | FREESHIP
+  value       Int // % hoặc số tiền
+  maxDiscount Int? // trần giảm cho PERCENT
+  minOrder    Int       @default(0)
+  usageLimit  Int? // tổng lượt dùng
+  perUserLimit Int      @default(1)
+  usedCount   Int       @default(0)
+  startsAt    DateTime  @default(now())
+  endsAt      DateTime?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+}
+
+model Order {
+  id             Int       @id @default(autoincrement())
+  code           String    @unique
+  userId         Int
+  status         String    @default("PENDING") // PENDING | CONFIRMED | SHIPPING | DELIVERED | CANCELLED | RETURNED
+  paymentMethod  String // COD | VNPAY | MOMO
+  paymentStatus  String    @default("UNPAID") // UNPAID | PAID | FAILED | REFUNDED
+  shippingMethod String    @default("STANDARD") // STANDARD | EXPRESS
+  subtotal       Int
+  shippingFee    Int
+  discount       Int       @default(0)
+  total          Int
+  couponCode     String?
+  fullName       String
+  phone          String
+  address        String
+  note           String?
+  transactionId  String?
+  paidAt         DateTime?
+  cancelReason   String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user    User                 @relation(fields: [userId], references: [id])
+  items   OrderItem[]
+  history OrderStatusHistory[]
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id        Int     @id @default(autoincrement())
+  orderId   Int
+  productId Int
+  name      String
+  thumbnail String
+  price     Int
+  quantity  Int
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@index([productId])
+}
+
+model OrderStatusHistory {
+  id        Int      @id @default(autoincrement())
+  orderId   Int
+  status    String
+  note      String?
+  createdAt DateTime @default(now())
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model InventoryLog {
+  id         Int      @id @default(autoincrement())
+  productId  Int
+  change     Int // + nhập, - xuất
+  stockAfter Int
+  type       String // IMPORT | SALE | CANCEL | ADJUST | RETURN
+  note       String?
+  actor      String? // email người thao tác hoặc "AI"
+  createdAt  DateTime @default(now())
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?
+  action    String
+  detail    String
+  viaAI     Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+}
