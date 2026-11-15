@@ -43,7 +43,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
             <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg text-white ${c.color}`}><c.icon size={22} /></span>
             <div className="min-w-0">
               <div className="text-sm text-gray-500">{c.label}</div>
-              <div className="truncate text-lg font-bold xl:text-xl" title={String(c.value)}>{c.value}</div>
+              <div className="text-base font-bold leading-tight xl:text-lg" title={String(c.value)}>{c.value}</div>
               <div className={`flex items-center gap-1 text-xs ${c.up === false ? "text-red-500" : c.up ? "text-emerald-600" : "text-gray-500"}`}>
                 {c.up === false && <TrendingDown size={12} />}{c.sub}
               </div>

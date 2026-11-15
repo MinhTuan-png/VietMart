@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { MapPin, Ticket, Truck, Wallet } from "lucide-react";
 import { placeOrder, previewCoupon } from "@/app/actions/checkout";
@@ -21,6 +21,10 @@ export default function CheckoutForm({ addresses, items, coupons }: { addresses:
   const router = useRouter();
   const [addressId, setAddressId] = useState(addresses.find((a) => a.isDefault)?.id ?? addresses[0]?.id);
   const [showAddr, setShowAddr] = useState(!addresses.length);
+  // Khách mới thêm địa chỉ đầu tiên ngay tại trang thanh toán → tự chọn địa chỉ đó
+  useEffect(() => {
+    if (!addresses.some((a) => a.id === addressId)) setAddressId(addresses.find((a) => a.isDefault)?.id ?? addresses[0]?.id);
+  }, [addresses, addressId]);
   const [ship, setShip] = useState<keyof typeof SHIPPING_METHODS>("STANDARD");
   const [pay, setPay] = useState<"COD" | "VNPAY">("COD");
   const [code, setCode] = useState("");

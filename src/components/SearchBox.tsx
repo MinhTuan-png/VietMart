@@ -48,7 +48,7 @@ export default function SearchBox() {
   };
 
   return (
-    <div ref={box} className="relative flex-1">
+    <div ref={box} className="relative min-w-0 flex-1">
       <form
         onSubmit={(e) => {
           e.preventDefault();
