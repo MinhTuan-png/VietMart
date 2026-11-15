@@ -55,7 +55,15 @@ export async function saveAddress(_: FormState, fd: FormData): Promise<FormState
   const user = await getCurrentUser();
   if (!user) return { error: "Chưa đăng nhập" };
   const parsed = AddressSchema.safeParse(Object.fromEntries(fd));
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  if (!parsed.success) {
+    // giữ lại các ô đã nhập, chỉ báo lỗi ở ô sai
+    const values: Record<string, string> = {};
+    for (const k of ["fullName", "phone", "province", "district", "ward", "street"]) values[k] = String(fd.get(k) ?? "");
+    values.isDefault = fd.get("isDefault") === "on" ? "on" : "";
+    const fieldErrors: Record<string, string> = {};
+    for (const i of parsed.error.issues) { const k = String(i.path[0]); if (!fieldErrors[k]) fieldErrors[k] = i.message; }
+    return { error: "Vui lòng kiểm tra lại các ô được đánh dấu", fieldErrors, values };
+  }
   const id = Number(fd.get("id") || 0);
   const count = await prisma.address.count({ where: { userId: user.id } });
   const isDefault = fd.get("isDefault") === "on" || count === 0;
