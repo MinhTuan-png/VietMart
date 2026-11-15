@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { User, Package, MapPin, Heart } from "lucide-react";
+import { User, Package, MapPin, Heart, LogOut } from "lucide-react";
+import { logoutAction } from "@/app/actions/auth";
 import { requireUser } from "@/lib/auth";
 
 export default async function AccountLayout({ children }: { children: React.ReactNode }) {
@@ -23,6 +24,9 @@ export default async function AccountLayout({ children }: { children: React.Reac
               <Icon size={16} className="text-brand-500" /> {label}
             </Link>
           ))}
+          <form action={logoutAction} className="shrink-0">
+            <button className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-red-600 hover:bg-white"><LogOut size={16} /> Đăng xuất</button>
+          </form>
         </nav>
       </aside>
       <div>{children}</div>
