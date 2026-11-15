@@ -25,9 +25,6 @@ export function LoginForm({ next }: { next?: string }) {
           <>Bạn mới biết đến VietMart? <Link href={`/register${next ? `?next=${encodeURIComponent(next)}` : ""}`} className="font-medium text-brand-600">Đăng ký</Link></>
         )}
       </p>
-      <div className="rounded-md bg-gray-50 p-3 text-xs text-gray-500">
-        <b>Tài khoản demo:</b><br />Khách hàng: khach@vietmart.vn / 123456<br />Quản trị: admin@vietmart.vn / admin123
-      </div>
     </form>
   );
 }
