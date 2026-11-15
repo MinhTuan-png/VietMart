@@ -5,7 +5,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { createSession, destroySession } from "@/lib/auth";
 
-export type FormState = { error?: string; ok?: boolean; message?: string } | undefined;
+export type FormState = { error?: string; ok?: boolean; message?: string; fieldErrors?: Record<string, string>; values?: Record<string, string> } | undefined;
 
 const safeNext = (n: FormDataEntryValue | null) => {
   const s = typeof n === "string" ? n : "/";
@@ -16,8 +16,8 @@ export async function loginAction(_: FormState, fd: FormData): Promise<FormState
   const email = String(fd.get("email") ?? "").trim().toLowerCase();
   const password = String(fd.get("password") ?? "");
   const user = await prisma.user.findUnique({ where: { email } });
-  if (!user || !(await bcrypt.compare(password, user.password))) return { error: "Email hoặc mật khẩu không đúng" };
-  if (user.isLocked) return { error: "Tài khoản đã bị khóa. Vui lòng liên hệ CSKH." };
+  if (!user || !(await bcrypt.compare(password, user.password))) return { error: "Email hoặc mật khẩu không đúng", values: { email } };
+  if (user.isLocked) return { error: "Tài khoản đã bị khóa. Vui lòng liên hệ CSKH.", values: { email } };
   await createSession(user);
   let next = safeNext(fd.get("next"));
   if (next === "/" && (user.role === "ADMIN" || user.role === "STAFF")) next = "/admin";
@@ -36,9 +36,15 @@ const RegisterSchema = z
 
 export async function registerAction(_: FormState, fd: FormData): Promise<FormState> {
   const parsed = RegisterSchema.safeParse(Object.fromEntries(fd));
-  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  // giữ lại các ô đã nhập (trừ mật khẩu) để người dùng không phải gõ lại
+  const values = { name: String(fd.get("name") ?? ""), email: String(fd.get("email") ?? ""), phone: String(fd.get("phone") ?? "") };
+  if (!parsed.success) {
+    const fieldErrors: Record<string, string> = {};
+    for (const i of parsed.error.issues) { const k = String(i.path[0]); if (!fieldErrors[k]) fieldErrors[k] = i.message; }
+    return { error: "Vui lòng kiểm tra lại các ô được đánh dấu", fieldErrors, values };
+  }
   const { name, email, phone, password } = parsed.data;
-  if (await prisma.user.findUnique({ where: { email } })) return { error: "Email đã được sử dụng" };
+  if (await prisma.user.findUnique({ where: { email } })) return { error: "Email đã được sử dụng", fieldErrors: { email: "Email đã được sử dụng" }, values };
   const user = await prisma.user.create({ data: { name, email, phone, password: await bcrypt.hash(password, 10) } });
   await createSession(user);
   // khách mới đăng ký không có quyền /admin: về đúng trang trước đó nếu không phải trang quản trị, còn lại về trang chủ
